@@ -58,155 +58,92 @@ function generateRhythm(){
     S.rhythm.push({type,on:randomPattern(slots,count)});
   }
   renderPattern();
+  renderNotation();
 }
 
 function renderPattern(){
-  if($("summary")) {
-    $("summary").textContent = S.rhythm
-      .map(x => x.type === "triplet" ? "3연음" : "16분")
-      .join(" · ");
-  }
+  if($("summary")) $("summary").textContent=S.rhythm.map(x=>x.type==="triplet"?"3연음":"16분").join(" · ");
+  const score=$("score"); if(!score) return;
+  score.innerHTML="";
+  Object.assign(score.style,{background:"#0d1014",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"8px",padding:"16px",height:"auto",minHeight:"130px"});
+  S.rhythm.forEach((beat,i)=>{
+    const card=document.createElement("div");
+    Object.assign(card.style,{background:"#181c22",border:"1px solid #272c34",borderRadius:"12px",padding:"12px 6px"});
+    const label=document.createElement("div");
+    label.textContent=`${i+1}박`;
+    Object.assign(label.style,{textAlign:"center",fontSize:"10px",color:"#858c96",marginBottom:"12px"});
+    const dots=document.createElement("div");
+    Object.assign(dots.style,{display:"flex",justifyContent:"center",gap:"6px"});
+    beat.on.forEach(on=>{
+      const d=document.createElement("span");
+      Object.assign(d.style,{display:"block",width:"11px",height:"11px",borderRadius:"50%",background:on?"#d9ff4f":"#363c45",boxShadow:on?"0 0 8px rgba(217,255,79,.35)":"none"});
+      dots.appendChild(d);
+    });
+    const type=document.createElement("div");
+    type.textContent=beat.type==="triplet"?"TRIPLET":"16TH";
+    Object.assign(type.style,{textAlign:"center",marginTop:"11px",fontSize:"8px",letterSpacing:".08em",color:"#606873"});
+    card.append(label,dots,type); score.appendChild(card);
+  });
+}
 
-  const host = $("score");
-  if(!host) return;
 
-  host.innerHTML = "";
-  host.removeAttribute("style");
+function renderNotation(){
+  const host=$("notation");
+  if(!host || !S.rhythm || !S.rhythm.length) return;
+  host.innerHTML="";
 
-  // 악보 렌더링은 오디오 엔진과 완전히 독립.
-  // VexFlow가 실패해도 Play/Stop은 계속 작동한다.
-  try {
+  try{
     if(!window.Vex || !Vex.Flow) throw new Error("VexFlow not loaded");
+    const VF=Vex.Flow;
+    const width=Math.max(720, host.clientWidth || 720);
+    const renderer=new VF.Renderer(host,VF.Renderer.Backends.SVG);
+    renderer.resize(width,170);
+    const ctx=renderer.getContext();
 
-    const VF = Vex.Flow;
-    const mobile = window.innerWidth < 560;
-    const width = Math.max(mobile ? 620 : 760, host.clientWidth || 620);
-    const height = mobile ? 155 : 170;
+    // Four one-beat staves are joined visually into one 4/4 bar.
+    // This lets ordinary 16ths and triplets coexist accurately beat by beat.
+    const margin=8;
+    const beatW=(width-margin*2)/4;
 
-    const renderer = new VF.Renderer(host, VF.Renderer.Backends.SVG);
-    renderer.resize(width, height);
-
-    const ctx = renderer.getContext();
-    const margin = 8;
-    const beatWidth = (width - margin * 2) / 4;
-
-    S.rhythm.forEach((beat, beatIndex) => {
-      const x = margin + beatIndex * beatWidth;
-      const stave = new VF.Stave(x, 25, beatWidth + 1);
-
-      if(beatIndex === 0) {
-        stave.addClef("percussion");
-        stave.addTimeSignature("4/4");
-      }
-
+    S.rhythm.forEach((beat,bi)=>{
+      const stave=new VF.Stave(margin+bi*beatW,28,beatW+1);
+      if(bi===0) stave.addClef("percussion").addTimeSignature("4/4");
       stave.setContext(ctx).draw();
 
-      const notes = beat.on.map(on => {
-        return new VF.StaveNote({
-          clef: "percussion",
-          keys: ["c/5"],
-          duration: beat.type === "triplet"
-            ? (on ? "8" : "8r")
-            : (on ? "16" : "16r")
-        });
-      });
+      const notes=beat.on.map(on=>new VF.StaveNote({
+        clef:"percussion",
+        keys:["c/5"],
+        duration:beat.type==="triplet" ? (on?"8":"8r") : (on?"16":"16r"),
+        stem_direction:VF.Stem.UP
+      }));
 
-      const voice = new VF.Voice({
-        num_beats: 1,
-        beat_value: 4
-      });
-
+      const voice=new VF.Voice({num_beats:1,beat_value:4});
       voice.addTickables(notes);
-
-      const usableWidth = Math.max(
-        55,
-        beatWidth - (beatIndex === 0 ? 58 : 20)
-      );
 
       new VF.Formatter()
         .joinVoices([voice])
-        .format([voice], usableWidth);
+        .format([voice], Math.max(58,beatW-(bi===0?62:22)));
 
-      voice.draw(ctx, stave);
+      voice.draw(ctx,stave);
 
-      if(beat.type === "triplet") {
-        const tuplet = new VF.Tuplet(notes, {
-          num_notes: 3,
-          notes_occupied: 2
-        });
-        tuplet.setContext(ctx).draw();
-      } else {
-        VF.Beam.generateBeams(notes).forEach(beam => {
-          beam.setContext(ctx).draw();
-        });
+      if(beat.type==="triplet"){
+        new VF.Tuplet(notes,{num_notes:3,notes_occupied:2})
+          .setContext(ctx).draw();
+      }else{
+        VF.Beam.generateBeams(notes,{stem_direction:VF.Stem.UP})
+          .forEach(beam=>beam.setContext(ctx).draw());
       }
     });
 
-    // SVG를 모바일에서도 선명하게 유지
-    const svg = host.querySelector("svg");
-    if(svg) {
-      svg.setAttribute("role", "img");
-      svg.setAttribute("aria-label", "랜덤으로 생성된 한 마디 리듬 악보");
+    const svg=host.querySelector("svg");
+    if(svg){
+      svg.setAttribute("role","img");
+      svg.setAttribute("aria-label","랜덤 리듬 악보");
     }
-
-  } catch(err) {
-    console.error("Score render failed:", err);
-    renderFallbackPattern(host);
+  }catch(err){
+    console.error("Notation render failed:",err);
+    host.innerHTML='<div class="notation-error">악보를 불러오지 못했습니다. 아래 리듬 표시와 재생 기능은 계속 사용할 수 있습니다.</div>';
   }
-}
-
-function renderFallbackPattern(host){
-  host.innerHTML = "";
-  Object.assign(host.style,{
-    background:"#0d1014",
-    display:"grid",
-    gridTemplateColumns:"repeat(4,1fr)",
-    gap:"8px",
-    padding:"16px",
-    height:"auto",
-    minHeight:"130px"
-  });
-
-  S.rhythm.forEach((beat,i)=>{
-    const card=document.createElement("div");
-    Object.assign(card.style,{
-      background:"#181c22",
-      border:"1px solid #272c34",
-      borderRadius:"12px",
-      padding:"12px 6px"
-    });
-
-    const label=document.createElement("div");
-    label.textContent=`${i+1}박`;
-    Object.assign(label.style,{
-      textAlign:"center",
-      fontSize:"10px",
-      color:"#858c96",
-      marginBottom:"12px"
-    });
-
-    const dots=document.createElement("div");
-    Object.assign(dots.style,{
-      display:"flex",
-      justifyContent:"center",
-      gap:"6px"
-    });
-
-    beat.on.forEach(on=>{
-      const d=document.createElement("span");
-      Object.assign(d.style,{
-        display:"block",
-        width:"11px",
-        height:"11px",
-        borderRadius:"50%",
-        background:on?"#d9ff4f":"#363c45"
-      });
-      dots.appendChild(d);
-    });
-
-    card.append(label,dots);
-    host.appendChild(card);
-  });
 }
 
 function getAudioContext(){
@@ -329,11 +266,10 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("play").onclick=()=>S.playing?stop():play();
 
   setTransportPlaying(false);
+});
 
-  let resizeTimer = null;
-  window.addEventListener("resize",()=>{
-    clearTimeout(resizeTimer);
-    resizeTimer=setTimeout(()=>{ if(S.rhythm.length) renderPattern(); },180);
-  });
-
+let notationResizeTimer=null;
+window.addEventListener("resize",()=>{
+  clearTimeout(notationResizeTimer);
+  notationResizeTimer=setTimeout(()=>renderNotation(),180);
 });

@@ -15,16 +15,27 @@ html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-sys
 .transport .play.is-playing{background:#ff5b5b;color:#0b0d10}
 @media(max-width:560px){.transport .play{width:100%}}
 
-/* v4 score */
-#score{
+/* v5: notation + existing light display */
+.notation-card{padding-bottom:14px}
+#notation{
+  margin-top:12px;
+  min-height:170px;
   background:#f4f3ee;
   border-radius:12px;
   overflow-x:auto;
   overflow-y:hidden;
-  min-height:155px;
   -webkit-overflow-scrolling:touch;
 }
-#score svg{display:block;min-width:620px}
+#notation svg{display:block;min-width:720px}
+.notation-error{
+  min-height:150px;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  color:#555;
+  text-align:center;
+  font-size:12px;
+}
 @media(max-width:560px){
-  #score{margin-top:10px;min-height:155px}
+  #notation{min-height:170px}
 }
