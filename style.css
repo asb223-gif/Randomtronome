@@ -43,3 +43,42 @@ html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-sys
 /* v6 native SVG score */
 #notation{overflow:hidden}
 #notation svg{display:block;width:100%;min-width:0;height:auto;aspect-ratio:760/170}
+
+/* v7 engraved score presentation */
+.notation-card .score-head{padding-bottom:2px}
+#notation{
+  background:#f6f3ea;
+  border:1px solid rgba(0,0,0,.08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8);
+  padding:4px 0;
+}
+#notation svg{
+  width:100%;
+  height:auto;
+  min-width:0;
+  aspect-ratio:900/205;
+}
+@media(max-width:560px){
+  #notation{border-radius:10px}
+  #notation svg{aspect-ratio:900/205}
+}
+
+/* v8 — score integrated into the existing Randomtronome card */
+.notation-card{
+  background:var(--panel);
+}
+#notation{
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  border-radius:0 !important;
+  padding:2px 0 0 !important;
+  margin-top:8px;
+}
+#notation svg{
+  background:transparent !important;
+  width:100%;
+  height:auto;
+  min-width:0;
+  display:block;
+}

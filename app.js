@@ -92,111 +92,128 @@ function renderNotation(){
   if(!host || !S.rhythm || !S.rhythm.length) return;
   host.innerHTML="";
 
-  // 외부 악보 라이브러리 없이 브라우저 SVG로 직접 그린다.
-  // 따라서 CDN/VexFlow 로딩 실패와 무관하게 항상 표시된다.
   const NS="http://www.w3.org/2000/svg";
-  const W=760,H=170;
+  const W=900,H=205;
   const svg=document.createElementNS(NS,"svg");
   svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
-  svg.setAttribute("width","100%");
-  svg.setAttribute("height","170");
   svg.setAttribute("role","img");
   svg.setAttribute("aria-label","랜덤 리듬 악보");
-  svg.style.background="#f4f3ee";
+  svg.style.background="transparent";
 
-  const line=(x1,y1,x2,y2,w=1.4)=>{
-    const e=document.createElementNS(NS,"line");
-    e.setAttribute("x1",x1);e.setAttribute("y1",y1);
-    e.setAttribute("x2",x2);e.setAttribute("y2",y2);
-    e.setAttribute("stroke","#111");e.setAttribute("stroke-width",w);
-    svg.appendChild(e);return e;
+  const add=(tag,attrs={})=>{
+    const e=document.createElementNS(NS,tag);
+    Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
+    svg.appendChild(e); return e;
   };
-  const text=(x,y,t,size=15,weight="400")=>{
-    const e=document.createElementNS(NS,"text");
-    e.setAttribute("x",x);e.setAttribute("y",y);
-    e.setAttribute("fill","#111");e.setAttribute("font-size",size);
-    e.setAttribute("font-family","serif");e.setAttribute("font-weight",weight);
-    e.textContent=t;svg.appendChild(e);return e;
+  const line=(x1,y1,x2,y2,w=1.35)=>add("line",{x1,y1,x2,y2,stroke:"#aeb4bc","stroke-width":w,"stroke-linecap":"round"});
+  const txt=(x,y,t,size=14,weight=500,anchor="start")=>{
+    const e=add("text",{x,y,fill:"#f0f2f4","font-size":size,"font-family":"Georgia, 'Times New Roman', serif","font-weight":weight,"text-anchor":anchor});
+    e.textContent=t; return e;
   };
-  const ellipse=(cx,cy,rx=6,ry=4)=>{
-    const e=document.createElementNS(NS,"ellipse");
-    e.setAttribute("cx",cx);e.setAttribute("cy",cy);
-    e.setAttribute("rx",rx);e.setAttribute("ry",ry);
-    e.setAttribute("fill","#111");
-    e.setAttribute("transform",`rotate(-18 ${cx} ${cy})`);
-    svg.appendChild(e);return e;
+  const noteHead=(x,y)=>{
+    add("ellipse",{cx:x,cy:y,rx:7.2,ry:5.1,fill:"#f0f2f4",transform:`rotate(-18 ${x} ${y})`});
   };
+  const stem=(x,y,h=38)=>line(x+6.2,y-1,x+6.2,y-h,1.8);
 
-  const top=48, gap=10, left=62, right=742;
-  for(let i=0;i<5;i++) line(left,top+i*gap,right,top+i*gap,1.1);
-  line(left,top,left,top+4*gap,1.5);
-  line(right,top,right,top+4*gap,1.5);
+  const staffLeft=72, staffRight=875, staffTop=69, gap=11;
+  for(let i=0;i<5;i++) line(staffLeft,staffTop+i*gap,staffRight,staffTop+i*gap,1.05);
+  line(staffLeft,staffTop,staffLeft,staffTop+4*gap,1.8);
+  line(staffRight,staffTop,staffRight,staffTop+4*gap,2.4);
 
-  // 4/4
-  text(69,63,"4",19,"700"); text(69,82,"4",19,"700");
+  // Minimal percussion-style header: 4/4 only, cleaner for rhythm reading.
+  const ts1=txt(87,88,"4",22,700,"middle");
+  const ts2=txt(87,110,"4",22,700,"middle");
+  ts1.setAttribute("fill","#dfe3e7");
+  ts2.setAttribute("fill","#dfe3e7");
 
-  const usableStart=98, usableEnd=730;
-  const beatW=(usableEnd-usableStart)/4;
-  const noteY=top+2*gap;
+  const contentStart=118, contentEnd=860;
+  const beatW=(contentEnd-contentStart)/4;
+  const y=staffTop+2*gap;
 
-  function drawRest(x, y, small=false){
-    // 간단하지만 명확한 쉼표 기호
-    if(small){
-      text(x-5,y+5,"𝄿",18,"700");
-    }else{
-      text(x-5,y+5,"𝄾",18,"700");
-    }
+  // Small beat guides below the stave.
+  for(let b=0;b<4;b++){
+    const beatNo=txt(contentStart+b*beatW+beatW/2,153,String(b+1),11,700,"middle");
+    beatNo.setAttribute("fill","#6f7782");
   }
 
-  function drawStemNote(x,y,stem=28){
-    ellipse(x,y);
-    line(x+5,y-1,x+5,y-stem,1.7);
+  function drawSixteenthRest(x){
+    // Custom compact 16th rest, avoids OS music-font dependency.
+    line(x+2,y-26,x-2,y+5,1.8);
+    add("circle",{cx:x+4,cy:y-23,r:2.7,fill:"#f0f2f4"});
+    add("circle",{cx:x+1,cy:y-12,r:2.7,fill:"#f0f2f4"});
+    line(x+3,y-20,x+9,y-15,1.4);
+    line(x,y-9,x+6,y-4,1.4);
+  }
+  function drawEighthRest(x){
+    add("circle",{cx:x-1,cy:y-16,r:3,fill:"#f0f2f4"});
+    line(x+1,y-14,x+7,y-8,1.7);
+    line(x+7,y-8,x+1,y+6,1.7);
   }
 
   S.rhythm.forEach((beat,bi)=>{
-    const bx=usableStart+bi*beatW;
+    const bx=contentStart+bi*beatW;
     const slots=beat.on.length;
-    const step=beatW/slots;
-    const xs=beat.on.map((_,si)=>bx+step*(si+.5));
+    const pad=beat.type==="triplet"?26:20;
+    const xs=Array.from({length:slots},(_,i)=>bx+pad+(beatW-2*pad)*(slots===1?.5:i/(slots-1)));
 
-    // 박 구분용 아주 옅은 작은 숫자
-    text(bx+4,118,String(bi+1),10,"700");
-
-    beat.on.forEach((on,si)=>{
-      const x=xs[si];
-      if(on) drawStemNote(x,noteY);
-      else drawRest(x,noteY,beat.type==="sixteenth");
-    });
-
-    const active=beat.on.map((on,i)=>on?i:-1).filter(i=>i>=0);
     if(beat.type==="sixteenth"){
-      // 음표가 2개 이상이면 위쪽 빔을 그려 리듬 덩어리를 읽기 쉽게 함
-      if(active.length>=2){
-        const first=xs[active[0]]+5, last=xs[active[active.length-1]]+5;
-        line(first,noteY-28,last,noteY-28,3.5);
-        line(first,noteY-23,last,noteY-23,3.5);
-      }else if(active.length===1){
-        const x=xs[active[0]]+5;
-        line(x,noteY-28,x+10,noteY-24,3);
-        line(x,noteY-23,x+9,noteY-19,3);
+      // First draw noteheads/rests and stems.
+      beat.on.forEach((on,i)=>{
+        if(on){ noteHead(xs[i],y); stem(xs[i],y); }
+        else drawSixteenthRest(xs[i]);
+      });
+
+      // Beam only contiguous note groups. This looks much closer to engraved notation
+      // than stretching a beam across rests.
+      let i=0;
+      while(i<slots){
+        if(!beat.on[i]){i++;continue;}
+        let j=i;
+        while(j+1<slots && beat.on[j+1]) j++;
+        if(j>i){
+          const x1=xs[i]+6.2, x2=xs[j]+6.2;
+          line(x1,y-38,x2,y-38,4.4);
+          line(x1,y-31.5,x2,y-31.5,4.0);
+        }else{
+          const x=xs[i]+6.2;
+          line(x,y-38,x+12,y-34,3.6);
+          line(x,y-31.5,x+11,y-27.5,3.4);
+        }
+        i=j+1;
       }
     }else{
-      // 3연음 bracket + 3
-      const y=28;
-      line(xs[0]-10,y,xs[2]+10,y,1.2);
-      line(xs[0]-10,y,xs[0]-10,y+6,1.2);
-      line(xs[2]+10,y,xs[2]+10,y+6,1.2);
-      const bg=document.createElementNS(NS,"rect");
-      const mid=(xs[0]+xs[2])/2;
-      bg.setAttribute("x",mid-8);bg.setAttribute("y",18);
-      bg.setAttribute("width",16);bg.setAttribute("height",15);
-      bg.setAttribute("fill","#f4f3ee");svg.appendChild(bg);
-      text(mid-4,30,"3",13,"700");
+      beat.on.forEach((on,i)=>{
+        if(on){ noteHead(xs[i],y); stem(xs[i],y,34); }
+        else drawEighthRest(xs[i]);
+      });
+
+      // Single beam for contiguous triplet eighth notes.
+      let i=0;
+      while(i<slots){
+        if(!beat.on[i]){i++;continue;}
+        let j=i;
+        while(j+1<slots && beat.on[j+1]) j++;
+        if(j>i){
+          line(xs[i]+6.2,y-34,xs[j]+6.2,y-34,4.2);
+        }else{
+          line(xs[i]+6.2,y-34,xs[i]+18,y-30,3.7);
+        }
+        i=j+1;
+      }
+
+      // Elegant triplet bracket above the beat.
+      const l=bx+14, r=bx+beatW-14, by=33, mid=(l+r)/2;
+      line(l,by,l,by+7,1.1);
+      line(l,by,mid-13,by,1.1);
+      line(mid+13,by,r,by,1.1);
+      line(r,by,r,by+7,1.1);
+      txt(mid,by+5,"3",15,700,"middle");
     }
 
+    // Tiny beat separator below the staff only.
     if(bi<3){
-      // 박 경계는 악보를 방해하지 않도록 짧게 표시
-      line(bx+beatW,top+4*gap+4,bx+beatW,top+4*gap+10,.8);
+      const sep=bx+beatW;
+      line(sep,staffTop+4*gap+8,sep,staffTop+4*gap+14,.75);
     }
   });
 
