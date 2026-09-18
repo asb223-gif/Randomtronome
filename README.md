@@ -1,15 +1,12 @@
-# Randomtronome v2
+# Randomtronome v3
 
-모바일 우선 랜덤 리듬 메트로놈.
+이번 버전의 핵심 수정:
+- PLAY / STOP을 하나의 버튼으로 통합
+- STOP을 누르면 예약된 Web Audio oscillator도 즉시 중단
+- 모바일 다크 UI 유지
+- 16분 / 16분+3연음 / 3연음
+- 박별 음 개수 제한 및 Click ON/OFF
+- 재생할 때마다 새로운 랜덤 한 마디 생성
 
-- 16분음표 / 16분+3연음 / 3연음
-- 박별 음 개수 제한
-- 3연음 출현 비율
-- Web Audio API look-ahead scheduling
-- VexFlow 악보 표시
-- Stop 후 Play 시 새 리듬 생성
-- 모바일 하단 고정 Play/Stop
-
-## 업데이트
-기존 GitHub 저장소의 `index.html`, `style.css`, `app.js`를 이 버전으로 교체하세요.
-`README.md`도 함께 교체해도 됩니다.
+현재 악보는 재생 안정성 검증을 위해 임시 리듬 도트 UI를 사용합니다.
+다음 단계에서 VexFlow 악보 표시를 오디오 엔진과 독립적으로 다시 연결할 수 있습니다.
