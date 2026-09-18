@@ -61,27 +61,151 @@ function generateRhythm(){
 }
 
 function renderPattern(){
-  if($("summary")) $("summary").textContent=S.rhythm.map(x=>x.type==="triplet"?"3연음":"16분").join(" · ");
-  const score=$("score"); if(!score) return;
-  score.innerHTML="";
-  Object.assign(score.style,{background:"#0d1014",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"8px",padding:"16px",height:"auto",minHeight:"130px"});
+  if($("summary")) {
+    $("summary").textContent = S.rhythm
+      .map(x => x.type === "triplet" ? "3연음" : "16분")
+      .join(" · ");
+  }
+
+  const host = $("score");
+  if(!host) return;
+
+  host.innerHTML = "";
+  host.removeAttribute("style");
+
+  // 악보 렌더링은 오디오 엔진과 완전히 독립.
+  // VexFlow가 실패해도 Play/Stop은 계속 작동한다.
+  try {
+    if(!window.Vex || !Vex.Flow) throw new Error("VexFlow not loaded");
+
+    const VF = Vex.Flow;
+    const mobile = window.innerWidth < 560;
+    const width = Math.max(mobile ? 620 : 760, host.clientWidth || 620);
+    const height = mobile ? 155 : 170;
+
+    const renderer = new VF.Renderer(host, VF.Renderer.Backends.SVG);
+    renderer.resize(width, height);
+
+    const ctx = renderer.getContext();
+    const margin = 8;
+    const beatWidth = (width - margin * 2) / 4;
+
+    S.rhythm.forEach((beat, beatIndex) => {
+      const x = margin + beatIndex * beatWidth;
+      const stave = new VF.Stave(x, 25, beatWidth + 1);
+
+      if(beatIndex === 0) {
+        stave.addClef("percussion");
+        stave.addTimeSignature("4/4");
+      }
+
+      stave.setContext(ctx).draw();
+
+      const notes = beat.on.map(on => {
+        return new VF.StaveNote({
+          clef: "percussion",
+          keys: ["c/5"],
+          duration: beat.type === "triplet"
+            ? (on ? "8" : "8r")
+            : (on ? "16" : "16r")
+        });
+      });
+
+      const voice = new VF.Voice({
+        num_beats: 1,
+        beat_value: 4
+      });
+
+      voice.addTickables(notes);
+
+      const usableWidth = Math.max(
+        55,
+        beatWidth - (beatIndex === 0 ? 58 : 20)
+      );
+
+      new VF.Formatter()
+        .joinVoices([voice])
+        .format([voice], usableWidth);
+
+      voice.draw(ctx, stave);
+
+      if(beat.type === "triplet") {
+        const tuplet = new VF.Tuplet(notes, {
+          num_notes: 3,
+          notes_occupied: 2
+        });
+        tuplet.setContext(ctx).draw();
+      } else {
+        VF.Beam.generateBeams(notes).forEach(beam => {
+          beam.setContext(ctx).draw();
+        });
+      }
+    });
+
+    // SVG를 모바일에서도 선명하게 유지
+    const svg = host.querySelector("svg");
+    if(svg) {
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", "랜덤으로 생성된 한 마디 리듬 악보");
+    }
+
+  } catch(err) {
+    console.error("Score render failed:", err);
+    renderFallbackPattern(host);
+  }
+}
+
+function renderFallbackPattern(host){
+  host.innerHTML = "";
+  Object.assign(host.style,{
+    background:"#0d1014",
+    display:"grid",
+    gridTemplateColumns:"repeat(4,1fr)",
+    gap:"8px",
+    padding:"16px",
+    height:"auto",
+    minHeight:"130px"
+  });
+
   S.rhythm.forEach((beat,i)=>{
     const card=document.createElement("div");
-    Object.assign(card.style,{background:"#181c22",border:"1px solid #272c34",borderRadius:"12px",padding:"12px 6px"});
+    Object.assign(card.style,{
+      background:"#181c22",
+      border:"1px solid #272c34",
+      borderRadius:"12px",
+      padding:"12px 6px"
+    });
+
     const label=document.createElement("div");
     label.textContent=`${i+1}박`;
-    Object.assign(label.style,{textAlign:"center",fontSize:"10px",color:"#858c96",marginBottom:"12px"});
+    Object.assign(label.style,{
+      textAlign:"center",
+      fontSize:"10px",
+      color:"#858c96",
+      marginBottom:"12px"
+    });
+
     const dots=document.createElement("div");
-    Object.assign(dots.style,{display:"flex",justifyContent:"center",gap:"6px"});
+    Object.assign(dots.style,{
+      display:"flex",
+      justifyContent:"center",
+      gap:"6px"
+    });
+
     beat.on.forEach(on=>{
       const d=document.createElement("span");
-      Object.assign(d.style,{display:"block",width:"11px",height:"11px",borderRadius:"50%",background:on?"#d9ff4f":"#363c45",boxShadow:on?"0 0 8px rgba(217,255,79,.35)":"none"});
+      Object.assign(d.style,{
+        display:"block",
+        width:"11px",
+        height:"11px",
+        borderRadius:"50%",
+        background:on?"#d9ff4f":"#363c45"
+      });
       dots.appendChild(d);
     });
-    const type=document.createElement("div");
-    type.textContent=beat.type==="triplet"?"TRIPLET":"16TH";
-    Object.assign(type.style,{textAlign:"center",marginTop:"11px",fontSize:"8px",letterSpacing:".08em",color:"#606873"});
-    card.append(label,dots,type); score.appendChild(card);
+
+    card.append(label,dots);
+    host.appendChild(card);
   });
 }
 
@@ -205,4 +329,11 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("play").onclick=()=>S.playing?stop():play();
 
   setTransportPlaying(false);
+
+  let resizeTimer = null;
+  window.addEventListener("resize",()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(()=>{ if(S.rhythm.length) renderPattern(); },180);
+  });
+
 });

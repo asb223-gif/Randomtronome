@@ -14,3 +14,17 @@ html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-sys
 .transport .play{width:min(560px,100%)}
 .transport .play.is-playing{background:#ff5b5b;color:#0b0d10}
 @media(max-width:560px){.transport .play{width:100%}}
+
+/* v4 score */
+#score{
+  background:#f4f3ee;
+  border-radius:12px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  min-height:155px;
+  -webkit-overflow-scrolling:touch;
+}
+#score svg{display:block;min-width:620px}
+@media(max-width:560px){
+  #score{margin-top:10px;min-height:155px}
+}
