@@ -134,3 +134,9 @@ html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-sys
   #notation svg{width:100%;height:auto}
   .bpm-swipe{gap:12px}
 }
+
+/* v10 cleanup */
+#summary{display:none!important}
+.swipe-hint{display:none!important}
+.notation-card{padding:2px 4px 0}
+#notation svg{aspect-ratio:900/190!important}

@@ -62,7 +62,6 @@ function generateRhythm(){
 }
 
 function renderPattern(){
-  if($("summary")) $("summary").textContent=S.rhythm.map(x=>x.type==="triplet"?"3연음":"16분").join(" · ");
   const score=$("score"); if(!score) return;
   score.innerHTML="";
   Object.assign(score.style,{background:"#0d1014",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"8px",padding:"16px",height:"auto",minHeight:"130px"});
@@ -93,7 +92,7 @@ function renderNotation(){
   host.innerHTML="";
 
   const NS="http://www.w3.org/2000/svg";
-  const W=900,H=225;
+  const W=900,H=190;
   const svg=document.createElementNS(NS,"svg");
   svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
   svg.setAttribute("role","img");
@@ -111,96 +110,109 @@ function renderNotation(){
     const e=add("text",{x,y,fill:color,"font-size":size,"font-family":"Georgia, 'Times New Roman', serif","font-weight":weight,"text-anchor":anchor});
     e.textContent=t; return e;
   };
-  const noteHead=(x,y)=>{
-    // rounder, friendlier notehead
-    add("ellipse",{cx:x,cy:y,rx:8.5,ry:6.5,fill:"#f0f2f4",transform:`rotate(-12 ${x} ${y})`});
+  const head=(x,y,scale=1)=>{
+    add("ellipse",{cx:x,cy:y,rx:8.5*scale,ry:6.5*scale,fill:"#f0f2f4",transform:`rotate(-12 ${x} ${y})`});
   };
   const stem=(x,y,h=42)=>line(x+7.2,y-1,x+7.2,y-h,2,"#f0f2f4");
 
-  const staffLeft=58, staffRight=882, staffTop=82, gap=12;
-  for(let i=0;i<5;i++) line(staffLeft,staffTop+i*gap,staffRight,staffTop+i*gap,1.15,"#7d858f");
-  line(staffLeft,staffTop,staffLeft,staffTop+4*gap,1.7,"#aeb4bc");
-  line(staffRight,staffTop,staffRight,staffTop+4*gap,2.5,"#dfe3e7");
+  const top=62,gap=12,left=54,right=884;
+  for(let i=0;i<5;i++) line(left,top+i*gap,right,top+i*gap,1.15,"#7d858f");
+  line(left,top,left,top+4*gap,1.7,"#aeb4bc");
+  line(right,top,right,top+4*gap,2.5,"#dfe3e7");
 
-  txt(78,103,"4",25,700,"middle","#dfe3e7");
-  txt(78,128,"4",25,700,"middle","#dfe3e7");
+  // Properly center 4/4 inside the five-line staff.
+  const tsX=78;
+  txt(tsX,top+20,"4",24,700,"middle","#dfe3e7");
+  txt(tsX,top+43,"4",24,700,"middle","#dfe3e7");
 
-  const contentStart=112, contentEnd=865;
+  const contentStart=110,contentEnd=868;
   const beatW=(contentEnd-contentStart)/4;
-  const y=staffTop+2*gap;
-
-  for(let b=0;b<4;b++)
-    txt(contentStart+b*beatW+beatW/2,174,String(b+1),11,700,"middle","#69717c");
+  const y=top+2*gap;
 
   function draw16Rest(x){
-    // compact engraved-style 16th rest drawn with curves
     path(`M ${x+4} ${y-29} C ${x+11} ${y-29}, ${x+10} ${y-20}, ${x+4} ${y-19}
           M ${x+3} ${y-19} C ${x+10} ${y-18}, ${x+8} ${y-9}, ${x+1} ${y-8}
           M ${x+6} ${y-27} L ${x-2} ${y+8}`,2.2);
   }
   function draw8Rest(x){
-    // recognizable eighth rest: bulb + descending curved stroke
     add("ellipse",{cx:x+1,cy:y-20,rx:4.3,ry:3.5,fill:"#f0f2f4",transform:`rotate(-20 ${x+1} ${y-20})`});
     path(`M ${x+4} ${y-18} C ${x+13} ${y-12}, ${x+8} ${y-3}, ${x+1} ${y+9}`,2.5);
+  }
+  function drawQuarterRest(x){
+    path(`M ${x+4} ${y-30} L ${x-3} ${y-16} L ${x+5} ${y-8} L ${x-1} ${y+1}
+          C ${x+8} ${y+2}, ${x+7} ${y+10}, ${x+1} ${y+11}`,2.7);
+  }
+
+  // Compact notation mapping for 16th-grid onset patterns.
+  // Notes are sustained visually to the next onset/end of beat where practical.
+  function drawSixteenthBeat(beat,bx){
+    const on=beat.on;
+    const slotW=beatW/4;
+    const centers=[0,1,2,3].map(i=>bx+slotW*(i+.5));
+    const onsets=on.map((v,i)=>v?i:-1).filter(i=>i>=0);
+
+    if(onsets.length===0){ drawQuarterRest(bx+beatW/2); return; }
+
+    onsets.forEach((slot,k)=>{
+      const next=k+1<onsets.length?onsets[k+1]:4;
+      const dur=next-slot;
+      const x=centers[slot];
+      head(x,y); stem(x,y);
+
+      // Flags/beams reflect the compact duration to the next onset.
+      // 1 slot = 16th, 2 = 8th, 3 = dotted 8th, 4 = quarter.
+      if(dur===1){
+        line(x+7.2,y-42,x+20,y-37.5,4,"#f0f2f4");
+        line(x+7.2,y-34.5,x+19,y-30.5,3.7,"#f0f2f4");
+      }else if(dur===2 || dur===3){
+        line(x+7.2,y-42,x+20,y-37.5,4,"#f0f2f4");
+        if(dur===3) add("circle",{cx:x+17,cy:y-1,r:2.3,fill:"#f0f2f4"});
+      }
+      // dur 4 has no flag = quarter note
+    });
+
+    // Beam consecutive 16th onsets for readability.
+    let i=0;
+    while(i<4){
+      if(!on[i]){i++;continue;}
+      let j=i;
+      while(j+1<4 && on[j+1])j++;
+      if(j>i){
+        const x1=centers[i]+7.2,x2=centers[j]+7.2;
+        line(x1,y-42,x2,y-42,4.8,"#f0f2f4");
+        line(x1,y-34.5,x2,y-34.5,4.3,"#f0f2f4");
+      }
+      i=j+1;
+    }
+  }
+
+  function drawTripletBeat(beat,bx){
+    const pad=29;
+    const xs=Array.from({length:3},(_,i)=>bx+pad+(beatW-2*pad)*i/2);
+    beat.on.forEach((on,i)=>{
+      if(on){head(xs[i],y);stem(xs[i],y,38);}
+      else draw8Rest(xs[i]);
+    });
+    let i=0;
+    while(i<3){
+      if(!beat.on[i]){i++;continue;}
+      let j=i;while(j+1<3&&beat.on[j+1])j++;
+      if(j>i)line(xs[i]+7.2,y-38,xs[j]+7.2,y-38,4.7,"#f0f2f4");
+      else line(xs[i]+7.2,y-38,xs[i]+20,y-33.5,4,"#f0f2f4");
+      i=j+1;
+    }
+    const l=bx+16,r=bx+beatW-16,by=25,mid=(l+r)/2;
+    line(l,by,l,by+7,1.2,"#aeb4bc");
+    line(l,by,mid-14,by,1.2,"#aeb4bc");
+    line(mid+14,by,r,by,1.2,"#aeb4bc");
+    line(r,by,r,by+7,1.2,"#aeb4bc");
+    txt(mid,by+5,"3",16,700,"middle","#dfe3e7");
   }
 
   S.rhythm.forEach((beat,bi)=>{
     const bx=contentStart+bi*beatW;
-    const slots=beat.on.length;
-    const pad=beat.type==="triplet"?29:24;
-    const xs=Array.from({length:slots},(_,i)=>bx+pad+(beatW-2*pad)*(slots===1?.5:i/(slots-1)));
-
-    if(beat.type==="sixteenth"){
-      // Detect adjacent pairs of rests. A pair occupying 2 sixteenth slots is shown as one eighth rest.
-      const skip=new Set();
-      for(let i=0;i<slots-1;i++){
-        if(!beat.on[i] && !beat.on[i+1] && !skip.has(i)){
-          draw8Rest((xs[i]+xs[i+1])/2);
-          skip.add(i); skip.add(i+1); i++;
-        }
-      }
-
-      beat.on.forEach((on,i)=>{
-        if(on){noteHead(xs[i],y);stem(xs[i],y);}
-        else if(!skip.has(i)) draw16Rest(xs[i]);
-      });
-
-      // beam contiguous notes only
-      let i=0;
-      while(i<slots){
-        if(!beat.on[i]){i++;continue;}
-        let j=i; while(j+1<slots && beat.on[j+1])j++;
-        if(j>i){
-          line(xs[i]+7.2,y-42,xs[j]+7.2,y-42,4.8,"#f0f2f4");
-          line(xs[i]+7.2,y-34.5,xs[j]+7.2,y-34.5,4.3,"#f0f2f4");
-        }else{
-          line(xs[i]+7.2,y-42,xs[i]+20,y-37.5,4,"#f0f2f4");
-          line(xs[i]+7.2,y-34.5,xs[i]+19,y-30.5,3.7,"#f0f2f4");
-        }
-        i=j+1;
-      }
-    }else{
-      beat.on.forEach((on,i)=>{
-        if(on){noteHead(xs[i],y);stem(xs[i],y,38);}
-        else draw8Rest(xs[i]);
-      });
-
-      let i=0;
-      while(i<slots){
-        if(!beat.on[i]){i++;continue;}
-        let j=i; while(j+1<slots && beat.on[j+1])j++;
-        if(j>i) line(xs[i]+7.2,y-38,xs[j]+7.2,y-38,4.7,"#f0f2f4");
-        else line(xs[i]+7.2,y-38,xs[i]+20,y-33.5,4,"#f0f2f4");
-        i=j+1;
-      }
-
-      const l=bx+16,r=bx+beatW-16,by=38,mid=(l+r)/2;
-      line(l,by,l,by+7,1.2,"#aeb4bc");
-      line(l,by,mid-14,by,1.2,"#aeb4bc");
-      line(mid+14,by,r,by,1.2,"#aeb4bc");
-      line(r,by,r,by+7,1.2,"#aeb4bc");
-      txt(mid,by+5,"3",16,700,"middle","#dfe3e7");
-    }
+    if(beat.type==="sixteenth") drawSixteenthBeat(beat,bx);
+    else drawTripletBeat(beat,bx);
   });
 
   host.appendChild(svg);
