@@ -39,3 +39,7 @@ html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-sys
 @media(max-width:560px){
   #notation{min-height:170px}
 }
+
+/* v6 native SVG score */
+#notation{overflow:hidden}
+#notation svg{display:block;width:100%;min-width:0;height:auto;aspect-ratio:760/170}

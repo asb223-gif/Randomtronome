@@ -92,60 +92,116 @@ function renderNotation(){
   if(!host || !S.rhythm || !S.rhythm.length) return;
   host.innerHTML="";
 
-  try{
-    if(!window.Vex || !Vex.Flow) throw new Error("VexFlow not loaded");
-    const VF=Vex.Flow;
-    const width=Math.max(720, host.clientWidth || 720);
-    const renderer=new VF.Renderer(host,VF.Renderer.Backends.SVG);
-    renderer.resize(width,170);
-    const ctx=renderer.getContext();
+  // 외부 악보 라이브러리 없이 브라우저 SVG로 직접 그린다.
+  // 따라서 CDN/VexFlow 로딩 실패와 무관하게 항상 표시된다.
+  const NS="http://www.w3.org/2000/svg";
+  const W=760,H=170;
+  const svg=document.createElementNS(NS,"svg");
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  svg.setAttribute("width","100%");
+  svg.setAttribute("height","170");
+  svg.setAttribute("role","img");
+  svg.setAttribute("aria-label","랜덤 리듬 악보");
+  svg.style.background="#f4f3ee";
 
-    // Four one-beat staves are joined visually into one 4/4 bar.
-    // This lets ordinary 16ths and triplets coexist accurately beat by beat.
-    const margin=8;
-    const beatW=(width-margin*2)/4;
+  const line=(x1,y1,x2,y2,w=1.4)=>{
+    const e=document.createElementNS(NS,"line");
+    e.setAttribute("x1",x1);e.setAttribute("y1",y1);
+    e.setAttribute("x2",x2);e.setAttribute("y2",y2);
+    e.setAttribute("stroke","#111");e.setAttribute("stroke-width",w);
+    svg.appendChild(e);return e;
+  };
+  const text=(x,y,t,size=15,weight="400")=>{
+    const e=document.createElementNS(NS,"text");
+    e.setAttribute("x",x);e.setAttribute("y",y);
+    e.setAttribute("fill","#111");e.setAttribute("font-size",size);
+    e.setAttribute("font-family","serif");e.setAttribute("font-weight",weight);
+    e.textContent=t;svg.appendChild(e);return e;
+  };
+  const ellipse=(cx,cy,rx=6,ry=4)=>{
+    const e=document.createElementNS(NS,"ellipse");
+    e.setAttribute("cx",cx);e.setAttribute("cy",cy);
+    e.setAttribute("rx",rx);e.setAttribute("ry",ry);
+    e.setAttribute("fill","#111");
+    e.setAttribute("transform",`rotate(-18 ${cx} ${cy})`);
+    svg.appendChild(e);return e;
+  };
 
-    S.rhythm.forEach((beat,bi)=>{
-      const stave=new VF.Stave(margin+bi*beatW,28,beatW+1);
-      if(bi===0) stave.addClef("percussion").addTimeSignature("4/4");
-      stave.setContext(ctx).draw();
+  const top=48, gap=10, left=62, right=742;
+  for(let i=0;i<5;i++) line(left,top+i*gap,right,top+i*gap,1.1);
+  line(left,top,left,top+4*gap,1.5);
+  line(right,top,right,top+4*gap,1.5);
 
-      const notes=beat.on.map(on=>new VF.StaveNote({
-        clef:"percussion",
-        keys:["c/5"],
-        duration:beat.type==="triplet" ? (on?"8":"8r") : (on?"16":"16r"),
-        stem_direction:VF.Stem.UP
-      }));
+  // 4/4
+  text(69,63,"4",19,"700"); text(69,82,"4",19,"700");
 
-      const voice=new VF.Voice({num_beats:1,beat_value:4});
-      voice.addTickables(notes);
+  const usableStart=98, usableEnd=730;
+  const beatW=(usableEnd-usableStart)/4;
+  const noteY=top+2*gap;
 
-      new VF.Formatter()
-        .joinVoices([voice])
-        .format([voice], Math.max(58,beatW-(bi===0?62:22)));
+  function drawRest(x, y, small=false){
+    // 간단하지만 명확한 쉼표 기호
+    if(small){
+      text(x-5,y+5,"𝄿",18,"700");
+    }else{
+      text(x-5,y+5,"𝄾",18,"700");
+    }
+  }
 
-      voice.draw(ctx,stave);
+  function drawStemNote(x,y,stem=28){
+    ellipse(x,y);
+    line(x+5,y-1,x+5,y-stem,1.7);
+  }
 
-      if(beat.type==="triplet"){
-        new VF.Tuplet(notes,{num_notes:3,notes_occupied:2})
-          .setContext(ctx).draw();
-      }else{
-        VF.Beam.generateBeams(notes,{stem_direction:VF.Stem.UP})
-          .forEach(beam=>beam.setContext(ctx).draw());
-      }
+  S.rhythm.forEach((beat,bi)=>{
+    const bx=usableStart+bi*beatW;
+    const slots=beat.on.length;
+    const step=beatW/slots;
+    const xs=beat.on.map((_,si)=>bx+step*(si+.5));
+
+    // 박 구분용 아주 옅은 작은 숫자
+    text(bx+4,118,String(bi+1),10,"700");
+
+    beat.on.forEach((on,si)=>{
+      const x=xs[si];
+      if(on) drawStemNote(x,noteY);
+      else drawRest(x,noteY,beat.type==="sixteenth");
     });
 
-    const svg=host.querySelector("svg");
-    if(svg){
-      svg.setAttribute("role","img");
-      svg.setAttribute("aria-label","랜덤 리듬 악보");
+    const active=beat.on.map((on,i)=>on?i:-1).filter(i=>i>=0);
+    if(beat.type==="sixteenth"){
+      // 음표가 2개 이상이면 위쪽 빔을 그려 리듬 덩어리를 읽기 쉽게 함
+      if(active.length>=2){
+        const first=xs[active[0]]+5, last=xs[active[active.length-1]]+5;
+        line(first,noteY-28,last,noteY-28,3.5);
+        line(first,noteY-23,last,noteY-23,3.5);
+      }else if(active.length===1){
+        const x=xs[active[0]]+5;
+        line(x,noteY-28,x+10,noteY-24,3);
+        line(x,noteY-23,x+9,noteY-19,3);
+      }
+    }else{
+      // 3연음 bracket + 3
+      const y=28;
+      line(xs[0]-10,y,xs[2]+10,y,1.2);
+      line(xs[0]-10,y,xs[0]-10,y+6,1.2);
+      line(xs[2]+10,y,xs[2]+10,y+6,1.2);
+      const bg=document.createElementNS(NS,"rect");
+      const mid=(xs[0]+xs[2])/2;
+      bg.setAttribute("x",mid-8);bg.setAttribute("y",18);
+      bg.setAttribute("width",16);bg.setAttribute("height",15);
+      bg.setAttribute("fill","#f4f3ee");svg.appendChild(bg);
+      text(mid-4,30,"3",13,"700");
     }
-  }catch(err){
-    console.error("Notation render failed:",err);
-    host.innerHTML='<div class="notation-error">악보를 불러오지 못했습니다. 아래 리듬 표시와 재생 기능은 계속 사용할 수 있습니다.</div>';
-  }
-}
 
+    if(bi<3){
+      // 박 경계는 악보를 방해하지 않도록 짧게 표시
+      line(bx+beatW,top+4*gap+4,bx+beatW,top+4*gap+10,.8);
+    }
+  });
+
+  host.appendChild(svg);
+}
 function getAudioContext(){
   if(!S.ctx){
     const AC=window.AudioContext||window.webkitAudioContext;
