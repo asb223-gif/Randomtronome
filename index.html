@@ -15,9 +15,6 @@
   </header>
 
   <section class="score-card notation-card">
-    <div class="score-head">
-      <div><strong>SCORE</strong><small>생성된 리듬의 실제 악보</small></div>
-    </div>
     <div id="notation"></div>
   </section>
 
@@ -44,9 +41,14 @@
       <b id="chanceText">30%</b>
     </div>
 
-    <div class="row">
-      <span>BPM</span>
-      <div class="stepper"><button id="minus">−</button><input id="bpm" value="90" inputmode="numeric"><button id="plus">+</button></div>
+    <div class="bpm-block">
+      <small>BPM</small>
+      <div id="bpmSwipe" class="bpm-swipe" aria-label="BPM 조절">
+        <button id="minus" aria-label="BPM 감소">−</button>
+        <input id="bpm" value="90" inputmode="numeric" aria-label="BPM">
+        <button id="plus" aria-label="BPM 증가">+</button>
+      </div>
+      <div class="swipe-hint">← 쓸어서 느리게 · 빠르게 →</div>
     </div>
     <div class="row">
       <span>박자 Click</span>
@@ -54,9 +56,15 @@
     </div>
   </section>
 
-  <section class="panel">
-    <div class="panel-title"><div><label>박별 음 개수</label><small>각 박에서 울리는 음의 범위</small></div><button id="applyAll" class="text-btn">1박 설정 전체 적용</button></div>
-    <div id="beatSettings" class="beat-settings"></div>
+  <section class="panel beat-count-panel">
+    <button id="beatToggle" class="collapse-head" type="button" aria-expanded="false">
+      <div><strong>박별 음 개수</strong><small>각 박에서 울리는 음의 범위</small></div>
+      <span class="chevron">⌄</span>
+    </button>
+    <div id="beatPanelBody" class="collapse-body" hidden>
+      <div class="beat-tools"><button id="applyAll" class="text-btn">1박 설정 전체 적용</button></div>
+      <div id="beatSettings" class="beat-settings"></div>
+    </div>
   </section>
 
   <div class="bottom-space"></div>

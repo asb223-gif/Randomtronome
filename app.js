@@ -93,7 +93,7 @@ function renderNotation(){
   host.innerHTML="";
 
   const NS="http://www.w3.org/2000/svg";
-  const W=900,H=205;
+  const W=900,H=225;
   const svg=document.createElementNS(NS,"svg");
   svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
   svg.setAttribute("role","img");
@@ -105,115 +105,101 @@ function renderNotation(){
     Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
     svg.appendChild(e); return e;
   };
-  const line=(x1,y1,x2,y2,w=1.35)=>add("line",{x1,y1,x2,y2,stroke:"#aeb4bc","stroke-width":w,"stroke-linecap":"round"});
-  const txt=(x,y,t,size=14,weight=500,anchor="start")=>{
-    const e=add("text",{x,y,fill:"#f0f2f4","font-size":size,"font-family":"Georgia, 'Times New Roman', serif","font-weight":weight,"text-anchor":anchor});
+  const line=(x1,y1,x2,y2,w=1.35,color="#aeb4bc")=>add("line",{x1,y1,x2,y2,stroke:color,"stroke-width":w,"stroke-linecap":"round"});
+  const path=(d,w=1.8,fill="none",color="#f0f2f4")=>add("path",{d,fill,stroke:color,"stroke-width":w,"stroke-linecap":"round","stroke-linejoin":"round"});
+  const txt=(x,y,t,size=14,weight=500,anchor="start",color="#f0f2f4")=>{
+    const e=add("text",{x,y,fill:color,"font-size":size,"font-family":"Georgia, 'Times New Roman', serif","font-weight":weight,"text-anchor":anchor});
     e.textContent=t; return e;
   };
   const noteHead=(x,y)=>{
-    add("ellipse",{cx:x,cy:y,rx:7.2,ry:5.1,fill:"#f0f2f4",transform:`rotate(-18 ${x} ${y})`});
+    // rounder, friendlier notehead
+    add("ellipse",{cx:x,cy:y,rx:8.5,ry:6.5,fill:"#f0f2f4",transform:`rotate(-12 ${x} ${y})`});
   };
-  const stem=(x,y,h=38)=>line(x+6.2,y-1,x+6.2,y-h,1.8);
+  const stem=(x,y,h=42)=>line(x+7.2,y-1,x+7.2,y-h,2,"#f0f2f4");
 
-  const staffLeft=72, staffRight=875, staffTop=69, gap=11;
-  for(let i=0;i<5;i++) line(staffLeft,staffTop+i*gap,staffRight,staffTop+i*gap,1.05);
-  line(staffLeft,staffTop,staffLeft,staffTop+4*gap,1.8);
-  line(staffRight,staffTop,staffRight,staffTop+4*gap,2.4);
+  const staffLeft=58, staffRight=882, staffTop=82, gap=12;
+  for(let i=0;i<5;i++) line(staffLeft,staffTop+i*gap,staffRight,staffTop+i*gap,1.15,"#7d858f");
+  line(staffLeft,staffTop,staffLeft,staffTop+4*gap,1.7,"#aeb4bc");
+  line(staffRight,staffTop,staffRight,staffTop+4*gap,2.5,"#dfe3e7");
 
-  // Minimal percussion-style header: 4/4 only, cleaner for rhythm reading.
-  const ts1=txt(87,88,"4",22,700,"middle");
-  const ts2=txt(87,110,"4",22,700,"middle");
-  ts1.setAttribute("fill","#dfe3e7");
-  ts2.setAttribute("fill","#dfe3e7");
+  txt(78,103,"4",25,700,"middle","#dfe3e7");
+  txt(78,128,"4",25,700,"middle","#dfe3e7");
 
-  const contentStart=118, contentEnd=860;
+  const contentStart=112, contentEnd=865;
   const beatW=(contentEnd-contentStart)/4;
   const y=staffTop+2*gap;
 
-  // Small beat guides below the stave.
-  for(let b=0;b<4;b++){
-    const beatNo=txt(contentStart+b*beatW+beatW/2,153,String(b+1),11,700,"middle");
-    beatNo.setAttribute("fill","#6f7782");
-  }
+  for(let b=0;b<4;b++)
+    txt(contentStart+b*beatW+beatW/2,174,String(b+1),11,700,"middle","#69717c");
 
-  function drawSixteenthRest(x){
-    // Custom compact 16th rest, avoids OS music-font dependency.
-    line(x+2,y-26,x-2,y+5,1.8);
-    add("circle",{cx:x+4,cy:y-23,r:2.7,fill:"#f0f2f4"});
-    add("circle",{cx:x+1,cy:y-12,r:2.7,fill:"#f0f2f4"});
-    line(x+3,y-20,x+9,y-15,1.4);
-    line(x,y-9,x+6,y-4,1.4);
+  function draw16Rest(x){
+    // compact engraved-style 16th rest drawn with curves
+    path(`M ${x+4} ${y-29} C ${x+11} ${y-29}, ${x+10} ${y-20}, ${x+4} ${y-19}
+          M ${x+3} ${y-19} C ${x+10} ${y-18}, ${x+8} ${y-9}, ${x+1} ${y-8}
+          M ${x+6} ${y-27} L ${x-2} ${y+8}`,2.2);
   }
-  function drawEighthRest(x){
-    add("circle",{cx:x-1,cy:y-16,r:3,fill:"#f0f2f4"});
-    line(x+1,y-14,x+7,y-8,1.7);
-    line(x+7,y-8,x+1,y+6,1.7);
+  function draw8Rest(x){
+    // recognizable eighth rest: bulb + descending curved stroke
+    add("ellipse",{cx:x+1,cy:y-20,rx:4.3,ry:3.5,fill:"#f0f2f4",transform:`rotate(-20 ${x+1} ${y-20})`});
+    path(`M ${x+4} ${y-18} C ${x+13} ${y-12}, ${x+8} ${y-3}, ${x+1} ${y+9}`,2.5);
   }
 
   S.rhythm.forEach((beat,bi)=>{
     const bx=contentStart+bi*beatW;
     const slots=beat.on.length;
-    const pad=beat.type==="triplet"?26:20;
+    const pad=beat.type==="triplet"?29:24;
     const xs=Array.from({length:slots},(_,i)=>bx+pad+(beatW-2*pad)*(slots===1?.5:i/(slots-1)));
 
     if(beat.type==="sixteenth"){
-      // First draw noteheads/rests and stems.
+      // Detect adjacent pairs of rests. A pair occupying 2 sixteenth slots is shown as one eighth rest.
+      const skip=new Set();
+      for(let i=0;i<slots-1;i++){
+        if(!beat.on[i] && !beat.on[i+1] && !skip.has(i)){
+          draw8Rest((xs[i]+xs[i+1])/2);
+          skip.add(i); skip.add(i+1); i++;
+        }
+      }
+
       beat.on.forEach((on,i)=>{
-        if(on){ noteHead(xs[i],y); stem(xs[i],y); }
-        else drawSixteenthRest(xs[i]);
+        if(on){noteHead(xs[i],y);stem(xs[i],y);}
+        else if(!skip.has(i)) draw16Rest(xs[i]);
       });
 
-      // Beam only contiguous note groups. This looks much closer to engraved notation
-      // than stretching a beam across rests.
+      // beam contiguous notes only
       let i=0;
       while(i<slots){
         if(!beat.on[i]){i++;continue;}
-        let j=i;
-        while(j+1<slots && beat.on[j+1]) j++;
+        let j=i; while(j+1<slots && beat.on[j+1])j++;
         if(j>i){
-          const x1=xs[i]+6.2, x2=xs[j]+6.2;
-          line(x1,y-38,x2,y-38,4.4);
-          line(x1,y-31.5,x2,y-31.5,4.0);
+          line(xs[i]+7.2,y-42,xs[j]+7.2,y-42,4.8,"#f0f2f4");
+          line(xs[i]+7.2,y-34.5,xs[j]+7.2,y-34.5,4.3,"#f0f2f4");
         }else{
-          const x=xs[i]+6.2;
-          line(x,y-38,x+12,y-34,3.6);
-          line(x,y-31.5,x+11,y-27.5,3.4);
+          line(xs[i]+7.2,y-42,xs[i]+20,y-37.5,4,"#f0f2f4");
+          line(xs[i]+7.2,y-34.5,xs[i]+19,y-30.5,3.7,"#f0f2f4");
         }
         i=j+1;
       }
     }else{
       beat.on.forEach((on,i)=>{
-        if(on){ noteHead(xs[i],y); stem(xs[i],y,34); }
-        else drawEighthRest(xs[i]);
+        if(on){noteHead(xs[i],y);stem(xs[i],y,38);}
+        else draw8Rest(xs[i]);
       });
 
-      // Single beam for contiguous triplet eighth notes.
       let i=0;
       while(i<slots){
         if(!beat.on[i]){i++;continue;}
-        let j=i;
-        while(j+1<slots && beat.on[j+1]) j++;
-        if(j>i){
-          line(xs[i]+6.2,y-34,xs[j]+6.2,y-34,4.2);
-        }else{
-          line(xs[i]+6.2,y-34,xs[i]+18,y-30,3.7);
-        }
+        let j=i; while(j+1<slots && beat.on[j+1])j++;
+        if(j>i) line(xs[i]+7.2,y-38,xs[j]+7.2,y-38,4.7,"#f0f2f4");
+        else line(xs[i]+7.2,y-38,xs[i]+20,y-33.5,4,"#f0f2f4");
         i=j+1;
       }
 
-      // Elegant triplet bracket above the beat.
-      const l=bx+14, r=bx+beatW-14, by=33, mid=(l+r)/2;
-      line(l,by,l,by+7,1.1);
-      line(l,by,mid-13,by,1.1);
-      line(mid+13,by,r,by,1.1);
-      line(r,by,r,by+7,1.1);
-      txt(mid,by+5,"3",15,700,"middle");
-    }
-
-    // Tiny beat separator below the staff only.
-    if(bi<3){
-      const sep=bx+beatW;
-      line(sep,staffTop+4*gap+8,sep,staffTop+4*gap+14,.75);
+      const l=bx+16,r=bx+beatW-16,by=38,mid=(l+r)/2;
+      line(l,by,l,by+7,1.2,"#aeb4bc");
+      line(l,by,mid-14,by,1.2,"#aeb4bc");
+      line(mid+14,by,r,by,1.2,"#aeb4bc");
+      line(r,by,r,by+7,1.2,"#aeb4bc");
+      txt(mid,by+5,"3",16,700,"middle","#dfe3e7");
     }
   });
 
@@ -337,6 +323,41 @@ document.addEventListener("DOMContentLoaded",()=>{
 
   // One button controls both states.
   $("play").onclick=()=>S.playing?stop():play();
+
+  // 박별 음 개수: 모바일에서 기본 닫힘, 탭하면 펼침
+  const beatToggle=$("beatToggle");
+  const beatBody=$("beatPanelBody");
+  if(beatToggle && beatBody){
+    beatToggle.onclick=()=>{
+      const open=beatToggle.getAttribute("aria-expanded")==="true";
+      beatToggle.setAttribute("aria-expanded",String(!open));
+      beatBody.hidden=open;
+      beatToggle.classList.toggle("open",!open);
+    };
+  }
+
+  // BPM swipe: 오른쪽으로 밀면 증가, 왼쪽으로 밀면 감소.
+  const swipe=$("bpmSwipe");
+  if(swipe){
+    let startX=null, startBpm=null, lastApplied=0;
+    const begin=x=>{startX=x;startBpm=S.bpm;lastApplied=0;swipe.classList.add("swiping");};
+    const move=x=>{
+      if(startX===null)return;
+      const delta=x-startX;
+      const steps=Math.trunc(delta/12); // 약 12px당 1 BPM
+      if(steps!==lastApplied){
+        S.bpm=Math.max(40,Math.min(240,startBpm+steps));
+        $("bpm").value=S.bpm;
+        lastApplied=steps;
+      }
+    };
+    const end=()=>{startX=null;startBpm=null;swipe.classList.remove("swiping");};
+
+    swipe.addEventListener("pointerdown",e=>{begin(e.clientX);swipe.setPointerCapture?.(e.pointerId);});
+    swipe.addEventListener("pointermove",e=>move(e.clientX));
+    swipe.addEventListener("pointerup",end);
+    swipe.addEventListener("pointercancel",end);
+  }
 
   setTransportPlaying(false);
 });

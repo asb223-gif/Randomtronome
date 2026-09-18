@@ -82,3 +82,55 @@ html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-sys
   min-width:0;
   display:block;
 }
+
+/* v9 — larger integrated notation */
+.notation-card{padding:8px 8px 4px}
+#notation{margin:0!important;padding:0!important}
+#notation svg{aspect-ratio:900/225!important}
+
+/* centered BPM control + horizontal swipe */
+.bpm-block{
+  border-top:1px solid var(--line);
+  padding:13px 0 10px;
+  text-align:center;
+}
+.bpm-block>small{
+  display:block;color:var(--muted);font-size:9px;font-weight:850;
+  letter-spacing:.16em;margin-bottom:5px;
+}
+.bpm-swipe{
+  display:flex;align-items:center;justify-content:center;gap:15px;
+  width:min(290px,100%);margin:auto;touch-action:pan-y;
+  user-select:none;-webkit-user-select:none;border-radius:14px;
+}
+.bpm-swipe button{
+  width:48px;height:48px;border:1px solid var(--line);border-radius:13px;
+  background:var(--panel2);color:#fff;font-size:25px;font-weight:500;
+}
+.bpm-swipe input{
+  width:88px;height:54px;border:0;background:transparent;color:#fff;
+  font-size:30px;font-weight:900;text-align:center;outline:0;
+  -moz-appearance:textfield;
+}
+.bpm-swipe input::-webkit-outer-spin-button,.bpm-swipe input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.bpm-swipe.swiping{background:rgba(255,255,255,.025)}
+.swipe-hint{font-size:9px;color:#555e69;margin-top:1px}
+
+/* collapsible beat-count controls */
+.beat-count-panel{padding:0;overflow:hidden}
+.collapse-head{
+  width:100%;min-height:64px;padding:13px 15px;border:0;background:transparent;color:var(--text);
+  display:flex;align-items:center;justify-content:space-between;text-align:left;
+}
+.collapse-head strong{display:block;font-size:12px}
+.collapse-head small{display:block;color:var(--muted);font-size:10px;margin-top:4px}
+.chevron{font-size:22px;color:#8e96a0;transition:transform .18s}
+.collapse-head.open .chevron{transform:rotate(180deg)}
+.collapse-body{border-top:1px solid var(--line);padding:12px 14px 14px}
+.collapse-body[hidden]{display:none}
+.beat-tools{display:flex;justify-content:flex-end;margin-bottom:8px}
+@media(max-width:560px){
+  .notation-card{padding:4px 4px 0}
+  #notation svg{width:100%;height:auto}
+  .bpm-swipe{gap:12px}
+}
