@@ -38,12 +38,20 @@ function buildBeatSettings(){
   });
 }
 
-function randomPattern(slots,count){
-  const ids=Array.from({length:slots},(_,i)=>i);
-  for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]];}
-  const out=Array(slots).fill(false);
-  ids.slice(0,count).forEach(i=>out[i]=true);
-  return out;
+function randomPatternInRange(slots,minCount,maxCount){
+  // 가능한 ON/OFF 패턴을 먼저 전부 만든 뒤,
+  // 음 개수가 설정 범위에 들어오는 패턴만 후보로 남긴다.
+  // 따라서 후보 "패턴 각각"의 확률이 완전히 동일하다.
+  const candidates=[];
+  const total=2 ** slots;
+
+  for(let mask=0; mask<total; mask++){
+    const pattern=Array.from({length:slots},(_,i)=>Boolean(mask & (1 << i)));
+    const count=pattern.reduce((sum,on)=>sum+(on?1:0),0);
+    if(count>=minCount && count<=maxCount) candidates.push(pattern);
+  }
+
+  return candidates[Math.floor(Math.random()*candidates.length)].slice();
 }
 
 function generateRhythm(){
@@ -54,8 +62,7 @@ function generateRhythm(){
     const slots=type==="triplet"?3:4;
     const lo=Math.min(beatSettings[b].min,slots);
     const hi=Math.max(lo,Math.min(beatSettings[b].max,slots));
-    const count=lo+Math.floor(Math.random()*(hi-lo+1));
-    S.rhythm.push({type,on:randomPattern(slots,count)});
+    S.rhythm.push({type,on:randomPatternInRange(slots,lo,hi)});
   }
   renderPattern();
   renderNotation();
