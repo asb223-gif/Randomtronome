@@ -146,41 +146,22 @@ function renderNotation(){
   // Compact notation mapping for 16th-grid onset patterns.
   // Notes are sustained visually to the next onset/end of beat where practical.
   function drawSixteenthBeat(beat,bx){
-    const on=beat.on;
+    // ON = 16분음표, OFF = 16분쉼표. 항상 네 칸을 그대로 표시한다.
     const slotW=beatW/4;
-    const centers=[0,1,2,3].map(i=>bx+slotW*(i+.5));
-    const onsets=on.map((v,i)=>v?i:-1).filter(i=>i>=0);
-
-    if(onsets.length===0){ drawQuarterRest(bx+beatW/2); return; }
-
-    onsets.forEach((slot,k)=>{
-      const next=k+1<onsets.length?onsets[k+1]:4;
-      const dur=next-slot;
-      const x=centers[slot];
-      head(x,y); stem(x,y);
-
-      // Flags/beams reflect the compact duration to the next onset.
-      // 1 slot = 16th, 2 = 8th, 3 = dotted 8th, 4 = quarter.
-      if(dur===1){
-        line(x+7.2,y-42,x+20,y-37.5,4,"#f0f2f4");
-        line(x+7.2,y-34.5,x+19,y-30.5,3.7,"#f0f2f4");
-      }else if(dur===2 || dur===3){
-        line(x+7.2,y-42,x+20,y-37.5,4,"#f0f2f4");
-        if(dur===3) add("circle",{cx:x+17,cy:y-1,r:2.3,fill:"#f0f2f4"});
-      }
-      // dur 4 has no flag = quarter note
-    });
-
-    // Beam consecutive 16th onsets for readability.
+    const xs=[0,1,2,3].map(i=>bx+slotW*(i+.5));
+    beat.on.forEach((on,i)=>{ if(on){ head(xs[i],y); stem(xs[i],y); } else draw16Rest(xs[i]); });
     let i=0;
     while(i<4){
-      if(!on[i]){i++;continue;}
-      let j=i;
-      while(j+1<4 && on[j+1])j++;
+      if(!beat.on[i]){ i++; continue; }
+      let j=i; while(j+1<4 && beat.on[j+1]) j++;
       if(j>i){
-        const x1=centers[i]+7.2,x2=centers[j]+7.2;
+        const x1=xs[i]+7.2, x2=xs[j]+7.2;
         line(x1,y-42,x2,y-42,4.8,"#f0f2f4");
         line(x1,y-34.5,x2,y-34.5,4.3,"#f0f2f4");
+      }else{
+        const x=xs[i]+7.2;
+        line(x,y-42,x+13,y-37.5,4,"#f0f2f4");
+        line(x,y-34.5,x+12,y-30.5,3.7,"#f0f2f4");
       }
       i=j+1;
     }
